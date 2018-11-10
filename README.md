@@ -1,2 +1,2 @@
-# LOG_
-Some logger suitable for embedded developments 
+# The "LOG_"
+Just Logger but development for embedded devices 
