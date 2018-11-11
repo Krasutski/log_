@@ -23,6 +23,15 @@ extern "C" {
 #if !defined(LOG_THREADSAFE_ENABLED)
 #  define LOG_THREADSAFE_ENABLED                                (0U)
 #endif
+
+#if !defined(LOG_ENABLED_COLOR)
+#  define LOG_ENABLED_COLOR                                     (0U)
+#endif //LOG_ENABLED_COLOR
+
+#if LOG_ENABLED_COLOR == 1U && !defined(LOG_ENABLED)
+#  define LOG_ENABLED                                           (1U)
+#endif
+
 /* ===== TYPEDEFS =========================================================== */
 
 typedef enum log_level_e {
@@ -41,19 +50,15 @@ typedef enum {
 
 /* ===== LOG MACROS ========================================================= */
 
-#if LOGGER_ENABLE_COLOR == 1U && !defined(LOGGER_ENABLE)
-#  define LOGGER_ENABLE                                         (1U)
-#endif
-
-#if LOGGER_ENABLE == 1U
+#if LOG_ENABLED == 1U
 #  define LOG(...)                    log_it( __VA_ARGS__)
 #  define LOG_ARRAY(...)              log_array( __VA_ARGS__)
-#else /* LOGGER_ENABLE == 1 */
+#else /* LOG_ENABLED == 1 */
 #  define LOG(...)
 #  define LOG_ARRAY(...)
-#endif /* LOGGER_ENABLE == 1 */
+#endif /* LOG_ENABLED == 1 */
 
-#if LOGGER_ENABLE_COLOR == 1
+#if LOG_ENABLED_COLOR == 1
 #  define LOG_COLOR_RED              "91"
 #  define LOG_COLOR_GREEN            "92"
 #  define LOG_COLOR_YELLOW           "93"
@@ -66,7 +71,7 @@ typedef enum {
 #else
 #  define LOG_COLOR(COLOR)
 #  define LOG_BOLD(COLOR)
-#endif /* LOGGER_ENABLE_COLOR == 1 */
+#endif /* LOG_ENABLED_COLOR == 1 */
 
 #define LOG_DEBUG(...)                  LOG(LOG_LEVEL_DEBUG, LOG_COLOR(LOG_COLOR_WHITE)  __VA_ARGS__)
 #define LOG_INFO(...)                   LOG(LOG_LEVEL_INFO, LOG_COLOR(LOG_COLOR_GREEN) __VA_ARGS__)
@@ -79,7 +84,7 @@ typedef enum {
 #define LOG_DEBUG_ARRAY_BLUE(...)       LOG_ARRAY(LOG_LEVEL_DEBUG, LOG_COLOR(LOG_COLOR_BLUE) __VA_ARGS
 
 
-#if LOGGER_ENABLE == 1U
+#if LOG_ENABLED == 1U
 typedef struct {
     void(*write)(uint8_t* data, size_t size);
 #if LOG_THREADSAFE_ENABLED == 1U
@@ -89,14 +94,14 @@ typedef struct {
 #if LOG_TIMESTAMP_ENABLED == 1U
     uint64_t (*get_ts)(void);
 #endif //LOG_TIMESTAMP_ENABLED == 1U
-}logger_io_t;
+}log_io_t;
 
-log_result_t log_init(const log_level_t level, logger_io_t const *io);
+log_result_t log_init(const log_level_t level, log_io_t const *io);
 
 /* Do not use it in your code, better use defines like LOG_INFO or LOG_DEBUG_ARRAY */
 void log_it(const log_level_t level, const char* format, ...);
 void log_array(const log_level_t level, char *message, const uint8_t* array, size_t size);
-#endif // LOGGER_ENABLE==1U
+#endif // LOG_ENABLED==1U
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,6 @@
 #include "log_.h"
 
-#if LOGGER_ENABLE==1
+#if LOG_ENABLED==1
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -12,7 +12,7 @@
 
 static char _log_buffer[LOG_MAX_MESSAGE_LENGTH] = {0};
 static log_level_t _logger_level = LOG_LEVEL_OFF;
-static logger_io_t const *_log_io = NULL;
+static log_io_t const *_log_io = NULL;
 
 /* ===== LOCAL FUNCTIONS PROTOTYPES ========================================= */
 
@@ -22,29 +22,25 @@ static inline void _print_ts(void);
 #endif //LOG_TIMESTAMP_ENABLED == 1
 /* ===== GLOBAL FUNCTIONS =================================================== */
 
-log_result_t log_init(const log_level_t level, logger_io_t const *io) {
+log_result_t log_init(const log_level_t level, log_io_t const *io) {
 
     if( (io == NULL) || (io->write == NULL) ) {
-
         return LOGGER_RESULT_ERROR;
     }
 
 #if LOG_TIMESTAMP_ENABLED == 1U
     if( (io->get_ts == NULL) ) {
-
         return LOGGER_RESULT_ERROR;
     }
 #endif //LOG_TIMESTAMP_ENABLED == 1U
 
-
 #if LOG_THREADSAFE_ENABLED == 1U
     if( (io->lock == NULL) || (io->unlock== NULL) ) {
-
         return LOGGER_RESULT_ERROR;
     }
 #endif //LOG_THREADSAFE_ENABLED == 1U
-    _logger_level = level;
 
+    _logger_level = level;
     _log_io = io;
 
     return LOGGER_RESULT_OK;
@@ -55,7 +51,6 @@ void log_it(const log_level_t level, const char* format, ...) {
     if ((level & _logger_level) == 0) {
         return;
     }
-
 
 #if LOG_THREADSAFE_ENABLED == 1U
     /* to protect _log_buffer */
@@ -116,15 +111,14 @@ static inline void _log_to(uint8_t* data, size_t size) {
     _log_io->write(data, size);
 }
 
-
 #if LOG_TIMESTAMP_ENABLED == 1
 static inline void _print_ts(void) {
 
-#if LOGGER_ENABLE_COLOR == 1
+#if LOG_ENABLED_COLOR == 1
     static const char TS_TEMPLATE[] = "\033[0;97m[%04d.%03d] ";
 #else
     static const char TS_TEMPLATE[] = "[%04d.%03d] ";
-#endif //LOGGER_ENABLE_COLOR == 1
+#endif //LOG_ENABLED_COLOR == 1
 
     snprintf(_log_buffer, sizeof(_log_buffer), TS_TEMPLATE,
              _log_io->get_ts() / 1000, _log_io->get_ts() % 1000);
@@ -132,4 +126,4 @@ static inline void _print_ts(void) {
 }
 #endif //LOG_TIMESTAMP_ENABLED == 1
 
-#endif //#if LOGGER_ENABLE==1
+#endif //#if LOG_ENABLED==1
