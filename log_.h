@@ -35,8 +35,8 @@ typedef enum log_level_e {
 } log_level_t;
 
 typedef enum {
-	LOGGER_RESULT_OK,
-	LOGGER_RESULT_ERROR,
+    LOGGER_RESULT_OK,
+    LOGGER_RESULT_ERROR,
 }log_result_t;
 
 /* ===== LOG MACROS ========================================================= */
@@ -81,13 +81,13 @@ typedef enum {
 
 #if LOGGER_ENABLE == 1U
 typedef struct {
-	void(*write)(uint8_t* data, size_t size);
+    void(*write)(uint8_t* data, size_t size);
 #if LOG_THREADSAFE_ENABLED == 1U
-	void(*lock)(void);
-	void(*unlock)(void);
+    void(*lock)(void);
+    void(*unlock)(void);
 #endif //LOG_THREADSAFE_ENABLED == 1U
 #if LOG_TIMESTAMP_ENABLED == 1U
-	uint64_t (*get_ts)(void);
+    uint64_t (*get_ts)(void);
 #endif //LOG_TIMESTAMP_ENABLED == 1U
 }logger_io_t;
 

@@ -24,30 +24,30 @@ static inline void _print_ts(void);
 
 log_result_t log_init(const log_level_t level, logger_io_t const *io) {
 
-	if( (io == NULL) || (io->write == NULL) ) {
+    if( (io == NULL) || (io->write == NULL) ) {
 
-		return LOGGER_RESULT_ERROR;
-	}
+        return LOGGER_RESULT_ERROR;
+    }
 
 #if LOG_TIMESTAMP_ENABLED == 1U
-	if( (io->get_ts == NULL) ) {
+    if( (io->get_ts == NULL) ) {
 
-		return LOGGER_RESULT_ERROR;
-	}
+        return LOGGER_RESULT_ERROR;
+    }
 #endif //LOG_TIMESTAMP_ENABLED == 1U
 
 
 #if LOG_THREADSAFE_ENABLED == 1U
-	if( (io->lock == NULL) || (io->unlock== NULL) ) {
+    if( (io->lock == NULL) || (io->unlock== NULL) ) {
 
-		return LOGGER_RESULT_ERROR;
-	}
+        return LOGGER_RESULT_ERROR;
+    }
 #endif //LOG_THREADSAFE_ENABLED == 1U
     _logger_level = level;
 
     _log_io = io;
 
-	return LOGGER_RESULT_OK;
+    return LOGGER_RESULT_OK;
 }
 
 void log_it(const log_level_t level, const char* format, ...) {
@@ -113,7 +113,7 @@ void log_array(const log_level_t level, char *message, const uint8_t* array, siz
 
 static inline void _log_to(uint8_t* data, size_t size) {
 
-	_log_io->write(data, size);
+    _log_io->write(data, size);
 }
 
 
