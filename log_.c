@@ -6,7 +6,6 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stddef.h>
-#include <string.h>
 
 /* ===== LOCAL VARIABLES ==================================================== */
 
@@ -64,9 +63,9 @@ void log_it(const log_level_t level, const char* format, ...) {
     va_list args;
     va_start(args, format);
 
-    vsnprintf(_log_buffer, LOG_MAX_MESSAGE_LENGTH, format, args);
+    int strlen = vsnprintf(_log_buffer, LOG_MAX_MESSAGE_LENGTH, format, args);
 
-    _log_to((uint8_t*)_log_buffer, strlen(_log_buffer));
+    _log_to((uint8_t*)_log_buffer, strlen);
 
     va_end(args);
 
@@ -89,15 +88,15 @@ void log_array(const log_level_t level, char *message, const uint8_t* array, siz
     _print_ts();
 #endif //LOG_TIMESTAMP_ENABLED == 1
 
-    snprintf(_log_buffer, sizeof(_log_buffer), "%s[%u]:", message, size);
-    _log_to((uint8_t*)_log_buffer, strlen(_log_buffer));
+    int strlen = snprintf(_log_buffer, sizeof(_log_buffer), "%s[%u]:", message, size);
+    _log_to((uint8_t*)_log_buffer, strlen);
 
     for (uint32_t i = 0; i < size; i++) {
-        snprintf(_log_buffer, sizeof(_log_buffer), " 0x%02X", array[i]);
-        _log_to((uint8_t*)_log_buffer, strlen(_log_buffer));
+        int strlen = snprintf(_log_buffer, sizeof(_log_buffer), " 0x%02X", array[i]);
+        _log_to((uint8_t*)_log_buffer, strlen);
     }
 
-    _log_to((uint8_t*)LOG_ENDLINE, strlen(LOG_ENDLINE));
+    _log_to((uint8_t*)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
 
 #if LOG_THREADSAFE_ENABLED == 1U
     _log_io->unlock();
@@ -115,14 +114,16 @@ static inline void _log_to(uint8_t* data, size_t size) {
 static inline void _print_ts(void) {
 
 #if LOG_ENABLED_COLOR == 1
-    static const char TS_TEMPLATE[] = "\033[0;97m[%04d.%03d] ";
+    static const char TS_TEMPLATE[] = "\033[0;97m[%04llu.%03lu] ";
 #else
-    static const char TS_TEMPLATE[] = "[%04d.%03d] ";
+    static const char TS_TEMPLATE[] = "[%04llu.%03lu] ";
 #endif //LOG_ENABLED_COLOR == 1
 
-    snprintf(_log_buffer, sizeof(_log_buffer), TS_TEMPLATE,
-             _log_io->get_ts() / 1000, _log_io->get_ts() % 1000);
-    _log_to((uint8_t*)_log_buffer, strlen(_log_buffer));
+    uint64_t ts = _log_io->get_ts();
+
+    int strlen = snprintf(_log_buffer, sizeof(_log_buffer),
+        TS_TEMPLATE, ts / 1000ULL, ts % 1000UL);
+    _log_to((uint8_t*)_log_buffer, strlen);
 }
 #endif //LOG_TIMESTAMP_ENABLED == 1
 
