@@ -101,7 +101,7 @@ log_result_t log_init(const log_level_t level, log_io_t const *io);
 /* Do not use it in your code, better use defines like LOG_INFO or LOG_DEBUG_ARRAY */
 void log_it(const log_level_t level, const char* format, ...)
 #if defined (__GNUC__)
-/* Enable format cheking by compiler */
+/* Enable format checking by GCC compiler */
 __attribute__((format(printf, 1, 2)))
 #endif
 ;
