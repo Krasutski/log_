@@ -98,13 +98,15 @@ typedef struct {
 
 log_result_t log_init(const log_level_t level, log_io_t const *io);
 
-/* Do not use it in your code, better use defines like LOG_INFO or LOG_DEBUG_ARRAY */
-void log_it(const log_level_t level, const char* format, ...)
 #if defined (__GNUC__)
 /* Enable format checking by GCC compiler */
-__attribute__((format(printf, 1, 2)))
+#  define __PRINTF_FORMAT __attribute__((format(printf, 1, 2)))
+#else
+#  define __PRINTF_FORMAT
 #endif
-;
+
+/* Do not use it in your code, better use defines like LOG_INFO or LOG_DEBUG_ARRAY */
+void log_it(const log_level_t level, const char* format, ...) __PRINTF_FORMAT;
 void log_array(const log_level_t level, char *message, const uint8_t* array, size_t size);
 #endif // LOG_ENABLED==1U
 
