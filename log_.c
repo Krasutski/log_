@@ -10,7 +10,7 @@
 /* ===== LOCAL VARIABLES ==================================================== */
 
 static char _log_buffer[LOG_MAX_MESSAGE_LENGTH] = {0};
-static log_level_t _logger_level = LOG_LEVEL_OFF;
+static log_mask_t _logger_mask = LOG_MASK_OFF;
 static log_io_t const *_log_io = NULL;
 
 /* ===== LOCAL FUNCTIONS PROTOTYPES ========================================= */
@@ -21,7 +21,7 @@ static inline void _print_ts(void);
 #endif //LOG_TIMESTAMP_ENABLED == 1
 /* ===== GLOBAL FUNCTIONS =================================================== */
 
-log_result_t log_init(const log_level_t level, log_io_t const *io) {
+log_result_t log_init(const log_mask_t level_mask, log_io_t const *io) {
 
     if( (io == NULL) || (io->write == NULL) ) {
         return LOGGER_RESULT_ERROR;
@@ -39,15 +39,15 @@ log_result_t log_init(const log_level_t level, log_io_t const *io) {
     }
 #endif //LOG_THREADSAFE_ENABLED == 1U
 
-    _logger_level = level;
+    _logger_mask = level_mask;
     _log_io = io;
 
     return LOGGER_RESULT_OK;
 }
 
-void log_it(const log_level_t level, const char* format, ...) {
+void log_it(const log_mask_t level_mask, const char* format, ...) {
 
-    if ((level & _logger_level) == 0) {
+    if ((level_mask & _logger_mask) == 0) {
         return;
     }
 
@@ -74,9 +74,9 @@ void log_it(const log_level_t level, const char* format, ...) {
 #endif //LOG_THREADSAFE_ENABLED == 1U
 }
 
-void log_array(const log_level_t level, char *message, const uint8_t* array, size_t size) {
+void log_array(const log_mask_t level_mask, char *message, const uint8_t* array, size_t size) {
 
-    if (level < _logger_level) {
+    if ( (level_mask & _logger_mask) == 0){
         return;
     }
 
@@ -92,7 +92,7 @@ void log_array(const log_level_t level, char *message, const uint8_t* array, siz
     _log_to((uint8_t*)_log_buffer, strlen);
 
     for (uint32_t i = 0; i < size; i++) {
-        int strlen = snprintf(_log_buffer, sizeof(_log_buffer), " 0x%02X", array[i]);
+        strlen = snprintf(_log_buffer, sizeof(_log_buffer), " 0x%02X", array[i]);
         _log_to((uint8_t*)_log_buffer, strlen);
     }
 

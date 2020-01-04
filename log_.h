@@ -34,14 +34,18 @@ extern "C" {
 
 /* ===== TYPEDEFS =========================================================== */
 
-typedef enum log_level_e {
-    LOG_LEVEL_OFF =     0x00,
-    LOG_LEVEL_DEBUG =   0x01,
-    LOG_LEVEL_INFO =    0x02,
-    LOG_LEVEL_WARNING = 0x04,
-    LOG_LEVEL_ERROR =   0x08,
-    LOG_LEVEL_ALL =     0xFF,
-} log_level_t;
+typedef enum log_mask_e {
+    LOG_MASK_OFF =     0x00,
+    LOG_MASK_INFO =    0x01,
+    LOG_MASK_WARNING = 0x02,
+    LOG_MASK_ERROR =   0x04,
+    LOG_MASK_DEBUG =   0x08,
+    LOG_MASK_USER1 =   0x10,
+    LOG_MASK_USER2 =   0x20,
+    LOG_MASK_USER3 =   0x40,
+    LOG_MASK_USER4 =   0x80,
+    LOG_MASK_ALL =     0xFF,
+} log_mask_t;
 
 typedef enum {
     LOGGER_RESULT_OK,
@@ -74,15 +78,15 @@ typedef enum {
 #  define LOG_BOLD(COLOR)
 #endif /* LOG_ENABLED_COLOR == 1 */
 
-#define LOG_DEBUG(...)                  LOG(LOG_LEVEL_DEBUG, LOG_COLOR(LOG_COLOR_WHITE) __VA_ARGS__)
-#define LOG_INFO(...)                   LOG(LOG_LEVEL_INFO, LOG_COLOR(LOG_COLOR_GREEN) __VA_ARGS__)
-#define LOG_WARNING(...)                LOG(LOG_LEVEL_WARNING, LOG_COLOR(LOG_COLOR_YELLOW) __VA_ARGS__)
-#define LOG_ERROR(...)                  LOG(LOG_LEVEL_ERROR, LOG_COLOR(LOG_COLOR_RED) __VA_ARGS__)
+#define LOG_DEBUG(...)                  LOG(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_WHITE) __VA_ARGS__)
+#define LOG_INFO(...)                   LOG(LOG_MASK_INFO, LOG_COLOR(LOG_COLOR_GREEN) __VA_ARGS__)
+#define LOG_WARNING(...)                LOG(LOG_MASK_WARNING, LOG_COLOR(LOG_COLOR_YELLOW) __VA_ARGS__)
+#define LOG_ERROR(...)                  LOG(LOG_MASK_ERROR, LOG_COLOR(LOG_COLOR_RED) __VA_ARGS__)
 
-#define LOG_DEBUG_ARRAY(...)            LOG_ARRAY(LOG_LEVEL_DEBUG, LOG_COLOR(LOG_COLOR_WHITE) __VA_ARGS__)
-#define LOG_DEBUG_ARRAY_RED(...)        LOG_ARRAY(LOG_LEVEL_DEBUG, LOG_COLOR(LOG_COLOR_RED) __VA_ARGS__)
-#define LOG_DEBUG_ARRAY_GREEN(...)      LOG_ARRAY(LOG_LEVEL_DEBUG, LOG_COLOR(LOG_COLOR_GREEN) __VA_ARGS__)
-#define LOG_DEBUG_ARRAY_BLUE(...)       LOG_ARRAY(LOG_LEVEL_DEBUG, LOG_COLOR(LOG_COLOR_BLUE) __VA_ARGS__)
+#define LOG_DEBUG_ARRAY(...)            LOG_ARRAY(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_WHITE) __VA_ARGS__)
+#define LOG_DEBUG_ARRAY_RED(...)        LOG_ARRAY(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_RED) __VA_ARGS__)
+#define LOG_DEBUG_ARRAY_GREEN(...)      LOG_ARRAY(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_GREEN) __VA_ARGS__)
+#define LOG_DEBUG_ARRAY_BLUE(...)       LOG_ARRAY(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_BLUE) __VA_ARGS__)
 
 
 #if LOG_ENABLED == 1U
@@ -97,7 +101,7 @@ typedef struct {
 #endif //LOG_TIMESTAMP_ENABLED == 1U
 }log_io_t;
 
-log_result_t log_init(const log_level_t level, log_io_t const *io);
+log_result_t log_init(const log_mask_t level, log_io_t const *io);
 
 #if defined (__GNUC__)
 /* Enable format checking by GCC compiler */
@@ -107,8 +111,8 @@ log_result_t log_init(const log_level_t level, log_io_t const *io);
 #endif
 
 /* Do not use it in your code, better use defines like LOG_INFO or LOG_DEBUG_ARRAY */
-void log_it(const log_level_t level, const char* format, ...) __PRINTF_FORMAT;
-void log_array(const log_level_t level, char *message, const uint8_t* array, size_t size);
+void log_it(const log_mask_t level, const char* format, ...) __PRINTF_FORMAT;
+void log_array(const log_mask_t level, char *message, const uint8_t* array, size_t size);
 #endif // LOG_ENABLED==1U
 
 #ifdef __cplusplus
