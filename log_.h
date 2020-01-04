@@ -64,6 +64,7 @@ typedef enum {
 #  define LOG_COLOR_YELLOW              "93"
 #  define LOG_COLOR_BLUE                "94"
 #  define LOG_COLOR_PURPLE              "95"
+#  define LOG_COLOR_CYAN                "96"
 #  define LOG_COLOR_WHITE               "97"
 #  define LOG_COLOR(COLOR)              "\033[0;" COLOR "m"
 #  define LOG_BOLD(COLOR)               "\033[1;" COLOR "m"
