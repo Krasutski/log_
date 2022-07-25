@@ -6,20 +6,34 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <inttypes.h>
 
-/* ===== LOCAL VARIABLES ==================================================== */
+/* -------------------------------------------------------------------------- */
 
-static char _log_buffer[LOG_MAX_MESSAGE_LENGTH] = {0};
-static log_mask_t _logger_mask = LOG_MASK_OFF;
-static log_io_t const *_log_io = NULL;
+static struct {
+    char buff[LOG_MAX_MESSAGE_LENGTH];
+    log_mask_t mask;
+    log_io_t const *io;
+#if LOG_ISR_QUEUE == 1U
+    uint8_t queue[LOG_MAX_MESSAGE_LENGTH * 2U];
+    size_t queue_index;
+#endif //LOG_ISR_QUEUE == 1U
+} _ctx = {
+    .mask = LOG_MASK_OFF,
+    .io = NULL,
+#if LOG_ISR_QUEUE == 1U
+    .queue_index = 0,
+#endif //LOG_ISR_QUEUE == 1U
+};
 
-/* ===== LOCAL FUNCTIONS PROTOTYPES ========================================= */
+/* -------------------------------------------------------------------------- */
 
 static void _log_to(uint8_t* data, size_t size);
 #if LOG_TIMESTAMP_ENABLED == 1
 static inline void _print_ts(void);
 #endif //LOG_TIMESTAMP_ENABLED == 1
-/* ===== GLOBAL FUNCTIONS =================================================== */
+
+/* -------------------------------------------------------------------------- */
 
 log_result_t log_init(const log_mask_t level_mask, log_io_t const *io) {
 
@@ -39,21 +53,32 @@ log_result_t log_init(const log_mask_t level_mask, log_io_t const *io) {
     }
 #endif //LOG_THREADSAFE_ENABLED == 1U
 
-    _logger_mask = level_mask;
-    _log_io = io;
+#if LOG_ISR_QUEUE == 1U
+    if( (io->is_isr == NULL) ) {
+        return LOGGER_RESULT_ERROR;
+    }
+#endif //LOG_ISR_QUEUE == 1U
+
+    _ctx.mask = level_mask;
+    _ctx.io = io;
+#if LOG_ISR_QUEUE == 1U
+    _ctx.queue_index = 0;
+#endif //LOG_ISR_QUEUE == 1U
 
     return LOGGER_RESULT_OK;
 }
 
+/* -------------------------------------------------------------------------- */
+
 void log_it(const log_mask_t level_mask, const char* format, ...) {
 
-    if ((level_mask & _logger_mask) == 0) {
+    if ((level_mask & _ctx.mask) == 0) {
         return;
     }
 
 #if LOG_THREADSAFE_ENABLED == 1U
-    /* to protect _log_buffer */
-    _log_io->lock();
+    /* to protect _ctx.buff */
+    _ctx.io->lock();
 #endif //LOG_THREADSAFE_ENABLED == 1U
 
 #if LOG_TIMESTAMP_ENABLED == 1
@@ -63,67 +88,114 @@ void log_it(const log_mask_t level_mask, const char* format, ...) {
     va_list args;
     va_start(args, format);
 
-    int strlen = vsnprintf(_log_buffer, LOG_MAX_MESSAGE_LENGTH, format, args);
+    int strlen = vsnprintf(_ctx.buff, LOG_MAX_MESSAGE_LENGTH, format, args);
 
-    _log_to((uint8_t*)_log_buffer, strlen);
+    _log_to((uint8_t*)_ctx.buff, strlen);
 
     va_end(args);
+#if defined(LOG_ENDLINE)
+    _log_to((uint8_t*)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
+#endif
 
 #if LOG_THREADSAFE_ENABLED == 1U
-    _log_io->unlock();
+    _ctx.io->unlock();
 #endif //LOG_THREADSAFE_ENABLED == 1U
 }
 
-void log_array(const log_mask_t level_mask, char *message, const uint8_t* array, size_t size) {
+/* -------------------------------------------------------------------------- */
 
-    if ( (level_mask & _logger_mask) == 0){
+void log_array(const log_mask_t level_mask, const char *message, const uint8_t* array, size_t size) {
+
+    if ( (level_mask & _ctx.mask) == 0){
         return;
     }
 
 #if LOG_THREADSAFE_ENABLED == 1U
-    _log_io->lock();
+    _ctx.io->lock();
 #endif //LOG_THREADSAFE_ENABLED == 1U
 
 #if LOG_TIMESTAMP_ENABLED == 1
     _print_ts();
 #endif //LOG_TIMESTAMP_ENABLED == 1
 
-    int strlen = snprintf(_log_buffer, sizeof(_log_buffer), "%s[%u]:", message, size);
-    _log_to((uint8_t*)_log_buffer, strlen);
+    int strlen = snprintf(_ctx.buff, sizeof(_ctx.buff), "%s[%u]:", message, size);
+    _log_to((uint8_t*)_ctx.buff, strlen);
 
     for (uint32_t i = 0; i < size; i++) {
-        strlen = snprintf(_log_buffer, sizeof(_log_buffer), " 0x%02X", array[i]);
-        _log_to((uint8_t*)_log_buffer, strlen);
+        strlen = snprintf(_ctx.buff, sizeof(_ctx.buff), " %02X", array[i]);
+        _log_to((uint8_t*)_ctx.buff, strlen);
     }
 
     _log_to((uint8_t*)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
 
 #if LOG_THREADSAFE_ENABLED == 1U
-    _log_io->unlock();
-#endif //sLOG_THREADSAFE_ENABLED == 1U
+    _ctx.io->unlock();
+#endif //LOG_THREADSAFE_ENABLED == 1U
 }
 
-/* ===== LOCAL FUNCTIONS ==================================================== */
+/* -------------------------------------------------------------------------- */
+
+#if LOG_ISR_QUEUE == 1U
+
+void log_flush_isr_queue(void) {
+    if( _ctx.queue_index > 0) {
+        _ctx.io->write(_ctx.queue, _ctx.queue_index);
+        _ctx.queue_index = 0;
+    }
+}
+
+#endif //LOG_ISR_QUEUE == 1U
+
+/* -------------------------------------------------------------------------- */
 
 static inline void _log_to(uint8_t* data, size_t size) {
 
-    _log_io->write(data, size);
+#if LOG_ISR_QUEUE == 1U
+
+    if(_ctx.io->is_isr()) {
+        size_t queue_count =  _ctx.queue_index;
+        for(size_t i=0; i<size; i++) {
+            size_t index = queue_count + i;
+            if(index >= sizeof(_ctx.queue)) {
+                return;
+            }
+            _ctx.queue[index] = data[i];
+            _ctx.queue_index++;
+        }
+
+        return;
+    }
+
+    log_flush_isr_queue();
+#endif //LOG_ISR_QUEUE == 1U
+
+    _ctx.io->write(data, size);
 }
+
+/* -------------------------------------------------------------------------- */
 
 #if LOG_TIMESTAMP_ENABLED == 1
 static inline void _print_ts(void) {
 
 #if LOG_ENABLED_COLOR == 1
-    static const char TS_TEMPLATE[] = "\033[0;97m[%04llu.%03lu] ";
+#  define _COLOR             "\033[0;97m"
 #else
-    static const char TS_TEMPLATE[] = "[%04llu.%03lu] ";
+#  define _COLOR             ""
 #endif //LOG_ENABLED_COLOR == 1
+#if LOG_TIMESTAMP_64BIT == 0
+#  define _FORMAT             "[%04"PRIu32".%03"PRIu32"] "
+#  define _DIVIDER              (1000UL)
+#else
+#  define _FORMAT             "[%04"PRIu64".%03"PRIu32"] "
+#  define _DIVIDER              (1000ULL)
+#endif //LOG_TIMESTAMP_64BIT == 1
+    static const char TS_TEMPLATE[] = _COLOR _FORMAT;
 
-    uint64_t ts = _log_io->get_ts();
+    log_timestamp_t ts = _ctx.io->get_ts();
 
-    int strlen = snprintf(_log_buffer, sizeof(_log_buffer),
-        TS_TEMPLATE, ts / 1000ULL, ts % 1000UL);
-    _log_to((uint8_t*)_log_buffer, strlen);
+    int strlen = snprintf(_ctx.buff, sizeof(_ctx.buff),
+        TS_TEMPLATE, ts / _DIVIDER, (uint32_t)(ts % 1000UL));
+    _log_to((uint8_t*)_ctx.buff, strlen);
 }
 #endif //LOG_TIMESTAMP_ENABLED == 1
 

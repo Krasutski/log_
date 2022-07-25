@@ -2,7 +2,9 @@
 #define __LOG_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <stddef.h>
+#include <log_conf.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,12 +14,12 @@ extern "C" {
 #  define LOG_MAX_MESSAGE_LENGTH                                (128U)
 #endif //LOG_MAX_MESSAGE_LENGTH
 
-#if !defined(LOG_ENDLINE)
-#  define LOG_ENDLINE                                           "\r\n"
+#if !defined(LOG_TIMESTAMP_64BIT)
+#  define LOG_TIMESTAMP_64BIT                                   (0U)
 #endif // LOG_ENDLINE
 
 #if !defined(LOG_TIMESTAMP_ENABLED)
-#  define LOG_TIMESTAMP_ENABLED                                 (0U)
+#  define LOG_TIMESTAMP_ENABLED                                 (1U)
 #endif //LOG_TIMESTAMP_ENABLED
 
 #if !defined(LOG_THREADSAFE_ENABLED)
@@ -31,6 +33,10 @@ extern "C" {
 #if LOG_ENABLED_COLOR == 1U && !defined(LOG_ENABLED)
 #  define LOG_ENABLED                                           (1U)
 #endif
+
+#if !defined(LOG_ISR_QUEUE)
+#  define LOG_ISR_QUEUE                                         (0U)
+#endif //LOG_ISR_QUEUE
 
 /* ===== TYPEDEFS =========================================================== */
 
@@ -51,6 +57,12 @@ typedef enum {
     LOGGER_RESULT_OK,
     LOGGER_RESULT_ERROR,
 }log_result_t;
+
+#if LOG_TIMESTAMP_64BIT == (0U)
+typedef uint32_t log_timestamp_t;
+#else
+typedef uint64_t log_timestamp_t;
+#endif
 
 /* ===== LOG MACROS ========================================================= */
 
@@ -91,28 +103,36 @@ typedef enum {
 
 #if LOG_ENABLED == 1U
 typedef struct {
-    void(*write)(uint8_t* data, size_t size);
+    void(*write)(const uint8_t* data, size_t size);
 #if LOG_THREADSAFE_ENABLED == 1U
     void(*lock)(void);
     void(*unlock)(void);
 #endif //LOG_THREADSAFE_ENABLED == 1U
 #if LOG_TIMESTAMP_ENABLED == 1U
-    uint64_t (*get_ts)(void);
+    log_timestamp_t (*get_ts)(void);
 #endif //LOG_TIMESTAMP_ENABLED == 1U
+#if LOG_ISR_QUEUE == 1U
+    bool (*is_isr)(void);
+#endif //LOG_ISR_QUEUE == 1U
 }log_io_t;
 
 log_result_t log_init(const log_mask_t level, log_io_t const *io);
 
 #if defined (__GNUC__)
 /* Enable format checking by GCC compiler */
-#  define __PRINTF_FORMAT __attribute__((format(printf, 1, 2)))
+#  define __PRINTF_FORMAT __attribute__((format(printf, 2, 3)))
 #else
 #  define __PRINTF_FORMAT
 #endif
 
 /* Do not use it in your code, better use defines like LOG_INFO or LOG_DEBUG_ARRAY */
 void log_it(const log_mask_t level, const char* format, ...) __PRINTF_FORMAT;
-void log_array(const log_mask_t level, char *message, const uint8_t* array, size_t size);
+void log_array(const log_mask_t level, const char *message, const uint8_t* array, size_t size);
+
+#if LOG_ISR_QUEUE == 1U
+void log_flush_isr_queue(void);
+#endif //LOG_ISR_QUEUE == 1U
+
 #endif // LOG_ENABLED==1U
 
 #ifdef __cplusplus
