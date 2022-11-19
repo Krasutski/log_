@@ -8,14 +8,18 @@ Simple debug output logger, color supported!
 Example of usage:
 
 ```
+#include "log_.h"
 #include "log_io.h"
 
 int main (void) {
-   #if LOG_ENABLED == 1U
-      log_init(LOG_MASK_ALL, &log_io_interface);
-   #endif  // LOG_ENABLED == 1U
+
+#if LOG_ENABLED == 1U
+    /* log_io_interface - defined and filled in log_io.h */
+    log_init(LOG_MASK_ALL, &log_io_interface);
+#endif  // LOG_ENABLED == 1U
    
     LOG_INFO("\r\nApplication(" __DATE__ " " __TIME__ ") Started\r\n");
+
     LOG_INFO("Log info has green highlight");
     LOG_WARNING("Log warning has yellow highlight");
     LOG_ERROR("Log error has red highlight");
@@ -31,7 +35,6 @@ int main (void) {
     uint8_t data[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
     LOG_DEBUG_ARRAY_BLUE("Data", data, sizeof(data));
 
-   
    for(;;) {
    }
 }

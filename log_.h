@@ -2,10 +2,11 @@
 #define __LOG_H__
 
 #include <inttypes.h>
-#include <log_conf.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include <log_conf.h>
 
 #ifdef __cplusplus
 extern "C" {
