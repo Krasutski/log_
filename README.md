@@ -1,6 +1,12 @@
 # The "log_" - Log Underscore
 Simple debug output logger, color supported!
 
+1. Clone repo and add log_.c file to your project
+2. Rename log_conf_template.h to log_conf.h and change default config if needed
+3. Rename log_io_template.h to log_io.h and fill configured functions
+
+Example of usage:
+
 ```
 #include "log_io.h"
 
@@ -31,4 +37,8 @@ int main (void) {
 }
 ```
 
-![Windows terminal output][./doc-data/windows-terminal.png]
+Example of output:
+
+Visual Studio project output, timestamp and color enabled:
+
+![Windows terminal output](doc-data/windows-terminal.png)
