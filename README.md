@@ -1,4 +1,4 @@
-# The "LOG_"
+# The "log_"
 Just Logger but development for embedded devices 
 
 ```
