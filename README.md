@@ -45,3 +45,8 @@ Example of output:
 Visual Studio project output, timestamp and color enabled:
 
 ![Windows terminal output](doc-data/windows-terminal.png)
+
+Example of Teraterm receiving data from serial port, timestamp and color enabled:
+
+![Teraterm output](doc-data/teraterm.png)
+
