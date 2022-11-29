@@ -128,7 +128,7 @@ log_result_t log_init(const log_mask_t level, log_io_t const *io);
 
 /* Do not use it in your code, better use defines like LOG_INFO or LOG_DEBUG_ARRAY */
 void log_it(const log_mask_t level, const char *format, ...) __PRINTF_FORMAT;
-void log_array(const log_mask_t level, const char *message, const uint8_t *array, size_t size);
+void log_array(const log_mask_t level, const char *message, const void *array, size_t size);
 
 #    if LOG_ISR_QUEUE == 1U
 void log_flush_isr_queue(void);

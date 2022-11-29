@@ -104,11 +104,13 @@ void log_it(const log_mask_t level_mask, const char *format, ...) {
 
 /* -------------------------------------------------------------------------- */
 
-void log_array(const log_mask_t level_mask, const char *message, const uint8_t *array, size_t size) {
+void log_array(const log_mask_t level_mask, const char *message, const void *data, size_t size) {
 
     if ((level_mask & _ctx.mask) == 0) {
         return;
     }
+
+    uint8_t const* array = data;
 
 #    if LOG_THREADSAFE_ENABLED == 1U
     _ctx.io->lock();
