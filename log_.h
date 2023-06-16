@@ -72,8 +72,14 @@ typedef uint64_t log_timestamp_t;
 #    define LOG(...)       log_it(__VA_ARGS__)
 #    define LOG_ARRAY(...) log_array(__VA_ARGS__)
 #else /* LOG_ENABLED == 1 */
-#    define LOG(...)
-#    define LOG_ARRAY(...)
+#    define LOG(...)                                            \
+        do {                                                    \
+            /* emtpy macro to avoid static analyzer warnings */ \
+        } while (0)
+#    define LOG_ARRAY(...)                                      \
+        do {                                                    \
+            /* emtpy macro to avoid static analyzer warnings */ \
+        } while (0)
 #endif /* LOG_ENABLED == 1 */
 
 #if LOG_ENABLED_COLOR == 1
@@ -88,8 +94,8 @@ typedef uint64_t log_timestamp_t;
 #    define LOG_BOLD(COLOR)   "\033[1;" COLOR "m"
 #    define LOG_RESET_COLOR() "\033[0m"
 #else
-#    define LOG_COLOR(COLOR)
-#    define LOG_BOLD(COLOR)
+#    define LOG_COLOR(COLOR) ""
+#    define LOG_BOLD(COLOR)  ""
 #endif /* LOG_ENABLED_COLOR == 1 */
 
 #define LOG_DEBUG(...)   LOG(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_WHITE) __VA_ARGS__)
