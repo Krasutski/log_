@@ -32,10 +32,6 @@ extern "C" {
 #    define LOG_ENABLED_COLOR (0U)
 #endif  // LOG_ENABLED_COLOR
 
-#if LOG_ENABLED_COLOR == 1U && !defined(LOG_ENABLED)
-#    define LOG_ENABLED (1U)
-#endif
-
 #if !defined(LOG_ISR_QUEUE)
 #    define LOG_ISR_QUEUE (0U)
 #endif  // LOG_ISR_QUEUE
