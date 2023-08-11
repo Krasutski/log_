@@ -88,7 +88,12 @@ void log_it(const log_mask_t level_mask, const char *format, ...) {
     va_list args;
     va_start(args, format);
 
+    bool is_truncated = false;
     int strlen = vsnprintf(_ctx.buff, LOG_MAX_MESSAGE_LENGTH, format, args);
+    if (strlen >= LOG_MAX_MESSAGE_LENGTH) {
+        strlen = LOG_MAX_MESSAGE_LENGTH;
+        is_truncated = true;
+    }
 
     _log_to((uint8_t *)_ctx.buff, strlen);
 
@@ -96,6 +101,12 @@ void log_it(const log_mask_t level_mask, const char *format, ...) {
 #    if defined(LOG_ENDLINE)
     _log_to((uint8_t *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
 #    endif
+
+    if (is_truncated) {
+        uint8_t const msg[] =
+            LOG_COLOR(LOG_COLOR_RED) "Message was truncated" LOG_ENDLINE "Increase LOG_MAX_MESSAGE_LENGTH" LOG_ENDLINE;
+        _log_to(msg, sizeof(msg) - 1);
+    }
 
 #    if LOG_THREADSAFE_ENABLED == 1U
     _ctx.io->unlock();
@@ -110,7 +121,7 @@ void log_array(const log_mask_t level_mask, const char *message, const void *dat
         return;
     }
 
-    uint8_t const* array = data;
+    uint8_t const *array = data;
 
 #    if LOG_THREADSAFE_ENABLED == 1U
     _ctx.io->lock();
@@ -200,4 +211,4 @@ static inline void _print_ts(void) {
 }
 #    endif  // LOG_TIMESTAMP_ENABLED == 1
 
-#endif  //#if LOG_ENABLED==1
+#endif  // #if LOG_ENABLED==1
