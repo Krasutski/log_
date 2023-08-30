@@ -206,9 +206,10 @@ static inline void _print_ts(void) {
 
     log_timestamp_t ts = _ctx.io->get_ts();
 
-    int strlen = snprintf(_ctx.buff, sizeof(_ctx.buff), TS_TEMPLATE, ts / _DIVIDER, (uint32_t)(ts % 1000UL));
+    int strlen =
+        snprintf(_ctx.buff, sizeof(_ctx.buff), TS_TEMPLATE, (uint32_t)(ts / _DIVIDER), (uint32_t)(ts % 1000UL));
     _log_to((uint8_t *)_ctx.buff, strlen);
 }
 #    endif  // LOG_TIMESTAMP_ENABLED == 1
 
-#endif  // #if LOG_ENABLED==1
+#endif  // LOG_ENABLED==1
