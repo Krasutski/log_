@@ -168,8 +168,10 @@ void log_array(const log_mask_t level_mask, const char *message, const void *dat
 
 void log_flush_isr_queue(void) {
     if (_ctx.queue_index > 0) {
+        _ctx.io->write((uint8_t *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
         _ctx.io->write(_ctx.queue, _ctx.queue_index);
         _ctx.queue_index = 0;
+        _ctx.io->write((uint8_t *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
     }
 }
 
