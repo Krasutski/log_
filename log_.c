@@ -28,6 +28,10 @@ static struct {
 
 /* -------------------------------------------------------------------------- */
 
+static const uint8_t snprintf_error[] = "\r\nsnprintf - internal error\r\n";
+
+/* -------------------------------------------------------------------------- */
+
 static void _log_to(uint8_t const *data, size_t size);
 #    if LOG_TIMESTAMP_ENABLED == 1
 static inline void _print_ts(void);
@@ -90,12 +94,16 @@ void log_it(const log_mask_t level_mask, const char *format, ...) {
 
     bool is_truncated = false;
     int strlen = vsnprintf(_ctx.buff, LOG_MAX_MESSAGE_LENGTH, format, args);
-    if (strlen >= LOG_MAX_MESSAGE_LENGTH) {
+    if (strlen >= (int)LOG_MAX_MESSAGE_LENGTH) {
         strlen = LOG_MAX_MESSAGE_LENGTH;
         is_truncated = true;
     }
 
-    _log_to((uint8_t *)_ctx.buff, strlen);
+    if (strlen >= 0) {
+        _log_to((uint8_t *)_ctx.buff, (size_t)strlen);
+    } else {
+        _log_to(snprintf_error, sizeof(snprintf_error) - 1);
+    }
 
     va_end(args);
 #    if defined(LOG_ENDLINE)
@@ -132,11 +140,19 @@ void log_array(const log_mask_t level_mask, const char *message, const void *dat
 #    endif  // LOG_TIMESTAMP_ENABLED == 1
 
     int strlen = snprintf(_ctx.buff, sizeof(_ctx.buff), "%s[%u]:", message, size);
-    _log_to((uint8_t *)_ctx.buff, strlen);
+    if (strlen >= 0) {
+        _log_to((uint8_t *)_ctx.buff, (size_t)strlen);
+    } else {
+        _log_to(snprintf_error, sizeof(snprintf_error) - 1);
+    }
 
     for (uint32_t i = 0; i < size; i++) {
         strlen = snprintf(_ctx.buff, sizeof(_ctx.buff), " %02X", array[i]);
-        _log_to((uint8_t *)_ctx.buff, strlen);
+        if (strlen >= 0) {
+            _log_to((uint8_t *)_ctx.buff, (size_t)strlen);
+        } else {
+            _log_to(snprintf_error, sizeof(snprintf_error) - 1);
+        }
     }
 
     _log_to((uint8_t *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
@@ -196,20 +212,23 @@ static inline void _print_ts(void) {
 #            define _COLOR ""
 #        endif  // LOG_ENABLED_COLOR == 1
 #        if LOG_TIMESTAMP_64BIT == 0
-#            define _FORMAT  "[%04" PRIu32 ".%03" PRIu32 "] "
-#            define _DIVIDER (1000UL)
+#            define _FORMAT  "[%04" PRIi32 ".%03" PRIu32 "] "
+#            define _DIVIDER (1000U)
 #        else
-#            define _FORMAT  "[%04" PRIu64 ".%03" PRIu32 "] "
+#            define _FORMAT  "[%04" PRIi64 ".%03" PRIu32 "] "
 #            define _DIVIDER (1000ULL)
 #        endif  // LOG_TIMESTAMP_64BIT == 1
     static const char TS_TEMPLATE[] = _COLOR _FORMAT;
 
     log_timestamp_t ts = _ctx.io->get_ts();
 
-    int strlen =
-        snprintf(_ctx.buff, sizeof(_ctx.buff), TS_TEMPLATE, (uint32_t)(ts / _DIVIDER), (uint32_t)(ts % 1000UL));
-    _log_to((uint8_t *)_ctx.buff, strlen);
+    int strlen = snprintf(_ctx.buff, sizeof(_ctx.buff), TS_TEMPLATE, (ts / _DIVIDER), (uint32_t)(ts % 1000UL));
+    if (strlen >= 0) {
+        _log_to((uint8_t *)_ctx.buff, (size_t)strlen);
+    } else {
+        _log_to(snprintf_error, sizeof(snprintf_error) - 1);
+    }
 }
 #    endif  // LOG_TIMESTAMP_ENABLED == 1
 
-#endif  // LOG_ENABLED==1
+#endif  // #if LOG_ENABLED==1
