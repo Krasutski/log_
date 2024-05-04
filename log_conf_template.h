@@ -11,6 +11,14 @@
 #define LOG_TIMESTAMP_ENABLED (1U)
 
 /*
+    Timestamp format:
+        0 - Only uptime
+        1 - Time and uptime
+        2 - Date, Tine and uptime
+*/
+#define LOG_TIMESTAMP_FORMAT (0U)
+
+/*
     Thread safe mode, enable it if use RTOS
 */
 #define LOG_THREADSAFE_ENABLED (0U)

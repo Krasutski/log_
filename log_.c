@@ -10,6 +10,14 @@
 
 /* -------------------------------------------------------------------------- */
 
+#    if LOG_ENABLED_COLOR == 1
+#        define _TIMESTAMP_COLOR "\033[0;97m"
+#    else
+#        define _TIMESTAMP_COLOR ""
+#    endif  // LOG_ENABLED_COLOR == 1
+
+/* -------------------------------------------------------------------------- */
+
 static struct {
     char buff[LOG_MAX_MESSAGE_LENGTH];
     log_mask_t mask;
@@ -34,8 +42,12 @@ static const uint8_t snprintf_error[] = "\r\nsnprintf - internal error\r\n";
 
 static void _log_to(uint8_t const *data, size_t size);
 #    if LOG_TIMESTAMP_ENABLED == 1
-static inline void _print_ts(void);
-#    endif  // LOG_TIMESTAMP_ENABLED == 1
+static inline void _print_uptime(void);
+
+#        if LOG_TIMESTAMP_FORMAT > 0U
+static inline void _print_date_time(void);
+#        endif  // LOG_TIMESTAMP_FORMAT > 0U
+#    endif      // LOG_TIMESTAMP_ENABLED == 1
 
 /* -------------------------------------------------------------------------- */
 
@@ -46,10 +58,16 @@ log_result_t log_init(const log_mask_t level_mask, log_io_t const *io) {
     }
 
 #    if LOG_TIMESTAMP_ENABLED == 1U
-    if (io->get_ts == NULL) {
+    if (io->get_uptime_ms == NULL) {
         return LOGGER_RESULT_ERROR;
     }
 #    endif  // LOG_TIMESTAMP_ENABLED == 1U
+
+#    if LOG_TIMESTAMP_FORMAT > 0U
+    if (io->get_utc_time_s == NULL) {
+        return LOGGER_RESULT_ERROR;
+    }
+#    endif  // LOG_TIMESTAMP_FORMAT > 0U
 
 #    if LOG_THREADSAFE_ENABLED == 1U
     if ((io->lock == NULL) || (io->unlock == NULL)) {
@@ -86,7 +104,10 @@ void log_it(const log_mask_t level_mask, const char *format, ...) {
 #    endif  // LOG_THREADSAFE_ENABLED == 1U
 
 #    if LOG_TIMESTAMP_ENABLED == 1
-    _print_ts();
+#        if LOG_TIMESTAMP_FORMAT > 0U
+    _print_date_time();
+#        endif  // LOG_TIMESTAMP_FORMAT > 0
+    _print_uptime();
 #    endif  // LOG_TIMESTAMP_ENABLED == 1
 
     va_list args;
@@ -136,7 +157,10 @@ void log_array(const log_mask_t level_mask, const char *message, const void *dat
 #    endif  // LOG_THREADSAFE_ENABLED == 1U
 
 #    if LOG_TIMESTAMP_ENABLED == 1
-    _print_ts();
+#        if LOG_TIMESTAMP_FORMAT > 0U
+    _print_date_time();
+#        endif  // LOG_TIMESTAMP_FORMAT > 0
+    _print_uptime();
 #    endif  // LOG_TIMESTAMP_ENABLED == 1
 
     int strlen = snprintf(_ctx.buff, sizeof(_ctx.buff), "%s[%u]:", message, size);
@@ -206,13 +230,8 @@ static inline void _log_to(uint8_t const *data, size_t size) {
 /* -------------------------------------------------------------------------- */
 
 #    if LOG_TIMESTAMP_ENABLED == 1
-static inline void _print_ts(void) {
 
-#        if LOG_ENABLED_COLOR == 1
-#            define _COLOR "\033[0;97m"
-#        else
-#            define _COLOR ""
-#        endif  // LOG_ENABLED_COLOR == 1
+static inline void _print_uptime(void) {
 #        if LOG_TIMESTAMP_64BIT == 0
 #            define _FORMAT  "[%04" PRIi32 ".%03" PRIu32 "] "
 #            define _DIVIDER (1000U)
@@ -220,9 +239,14 @@ static inline void _print_ts(void) {
 #            define _FORMAT  "[%04" PRIi64 ".%03" PRIu32 "] "
 #            define _DIVIDER (1000ULL)
 #        endif  // LOG_TIMESTAMP_64BIT == 1
-    static const char TS_TEMPLATE[] = _COLOR _FORMAT;
 
-    log_timestamp_t ts = _ctx.io->get_ts();
+#        if LOG_TIMESTAMP_FORMAT > 0U
+    static const char TS_TEMPLATE[] = _FORMAT;
+#        else
+    static const char TS_TEMPLATE[] = _TIMESTAMP_COLOR _FORMAT;
+#        endif  // LOG_TIMESTAMP_FORMAT > 0U
+
+    log_timestamp_t ts = _ctx.io->get_uptime_ms();
 
     int strlen = snprintf(_ctx.buff, sizeof(_ctx.buff), TS_TEMPLATE, (ts / _DIVIDER), (uint32_t)(ts % 1000UL));
     if (strlen >= 0) {
@@ -231,6 +255,42 @@ static inline void _print_ts(void) {
         _log_to(snprintf_error, sizeof(snprintf_error) - 1);
     }
 }
-#    endif  // LOG_TIMESTAMP_ENABLED == 1
+
+/* -------------------------------------------------------------------------- */
+
+#        if LOG_TIMESTAMP_FORMAT > 0U
+static inline void _print_date_time(void) {
+    time_t utc_time = _ctx.io->get_utc_time_s();
+
+    struct tm tm_buffer;
+    gmtime_r(&utc_time, &tm_buffer);
+
+#            if LOG_TIMESTAMP_FORMAT == 1U
+    int strlen = snprintf(_ctx.buff,
+                          sizeof(_ctx.buff),
+                          _TIMESTAMP_COLOR "[%02" PRIu32 ":%02" PRIu32 ":%02" PRIu32 "] ",
+                          (uint32_t)tm_buffer.tm_hour,
+                          (uint32_t)tm_buffer.tm_min,
+                          (uint32_t)tm_buffer.tm_sec);
+#            else
+    int strlen = snprintf(_ctx.buff,
+                          sizeof(_ctx.buff),
+                          _TIMESTAMP_COLOR "[%02" PRIu32 "-%02" PRIu32 "-%02" PRIu32 " %02" PRIu32 ":%02" PRIu32
+                                           ":%02" PRIu32 "] ",
+                          (uint32_t)(tm_buffer.tm_year + 1900),
+                          (uint32_t)(tm_buffer.tm_mon + 1),
+                          (uint32_t)tm_buffer.tm_mday,
+                          (uint32_t)tm_buffer.tm_hour,
+                          (uint32_t)tm_buffer.tm_min,
+                          (uint32_t)tm_buffer.tm_sec);
+#            endif  // LOG_TIMESTAMP_FORMAT == 1U
+    if (strlen >= 0) {
+        _log_to((uint8_t *)_ctx.buff, (size_t)strlen);
+    } else {
+        _log_to(snprintf_error, sizeof(snprintf_error) - 1);
+    }
+}
+#        endif  // LOG_TIMESTAMP_FORMAT > 0U
+#    endif      // LOG_TIMESTAMP_ENABLED == 1
 
 #endif  // #if LOG_ENABLED==1

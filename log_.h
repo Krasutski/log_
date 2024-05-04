@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <time.h>
 
 #include <log_conf.h>
 
@@ -23,6 +24,10 @@ extern "C" {
 #if !defined(LOG_TIMESTAMP_ENABLED)
 #    define LOG_TIMESTAMP_ENABLED (1U)
 #endif  // LOG_TIMESTAMP_ENABLED
+
+#if !defined(LOG_TIMESTAMP_FORMAT)
+#    define LOG_TIMESTAMP_FORMAT (0U)
+#endif  // LOG_TIMESTAMP_FORMAT
 
 #if !defined(LOG_THREADSAFE_ENABLED)
 #    define LOG_THREADSAFE_ENABLED (0U)
@@ -112,8 +117,11 @@ typedef struct {
     void (*unlock)(void);
 #    endif  // LOG_THREADSAFE_ENABLED == 1U
 #    if LOG_TIMESTAMP_ENABLED == 1U
-    log_timestamp_t (*get_ts)(void);
+    log_timestamp_t (*get_uptime_ms)(void);
 #    endif  // LOG_TIMESTAMP_ENABLED == 1U
+#    if LOG_TIMESTAMP_FORMAT > 0U
+    time_t (*get_utc_time_s)(void);
+#    endif  // LOG_TIMESTAMP_FORMAT > 0U
 #    if LOG_ISR_QUEUE == 1U
     bool (*is_isr)(void);
 #    endif  // LOG_ISR_QUEUE == 1U
