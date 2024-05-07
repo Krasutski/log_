@@ -150,7 +150,7 @@ void log_array(const log_mask_t level_mask, const char *message, const void *dat
         return;
     }
 
-    uint8_t const *array = data;
+    uint8_t const *array = (const uint8_t *)data;
 
 #    if LOG_THREADSAFE_ENABLED == 1U
     _ctx.io->lock();
