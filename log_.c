@@ -7,6 +7,9 @@
 #    include <stddef.h>
 #    include <stdint.h>
 #    include <stdio.h>
+#    if LOG_TIMESTAMP_FORMAT > 0U
+#        include <time.h>
+#    endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -261,9 +264,12 @@ static inline void _print_uptime(void) {
 #        if LOG_TIMESTAMP_FORMAT > 0U
 static inline void _print_date_time(void) {
     time_t utc_time = _ctx.io->get_utc_time_s();
-
     struct tm tm_buffer;
+#            if defined(_MSC_VER)
+    gmtime_s(&tm_buffer, &utc_time);
+#            else
     gmtime_r(&utc_time, &tm_buffer);
+#            endif
 
 #            if LOG_TIMESTAMP_FORMAT == 1U
     int strlen = snprintf(_ctx.buff,
