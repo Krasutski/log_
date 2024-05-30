@@ -95,8 +95,10 @@ log_result_t log_init(const log_mask_t level_mask, log_io_t const *io) {
 
 /* -------------------------------------------------------------------------- */
 
-void log_it(const log_mask_t level_mask, const char *format, ...) {
-
+static void _message(const log_mask_t level_mask, const char *format, va_list args, bool need_to_use_format) {
+#    if (LOG_TIMESTAMP_ENABLED == 0) && !defined(LOG_ENDLINE)
+    (void)need_to_use_format;
+#    endif  // LOG_TIMESTAMP_ENABLED == 0
     if ((level_mask & _ctx.mask) == 0) {
         return;
     }
@@ -107,14 +109,13 @@ void log_it(const log_mask_t level_mask, const char *format, ...) {
 #    endif  // LOG_THREADSAFE_ENABLED == 1U
 
 #    if LOG_TIMESTAMP_ENABLED == 1
+    if (need_to_use_format == true) {
 #        if LOG_TIMESTAMP_FORMAT > 0U
-    _print_date_time();
+        _print_date_time();
 #        endif  // LOG_TIMESTAMP_FORMAT > 0
-    _print_uptime();
+        _print_uptime();
+    }
 #    endif  // LOG_TIMESTAMP_ENABLED == 1
-
-    va_list args;
-    va_start(args, format);
 
     bool is_truncated = false;
     int strlen = vsnprintf(_ctx.buff, LOG_MAX_MESSAGE_LENGTH, format, args);
@@ -129,9 +130,10 @@ void log_it(const log_mask_t level_mask, const char *format, ...) {
         _log_to(snprintf_error, sizeof(snprintf_error) - 1);
     }
 
-    va_end(args);
 #    if defined(LOG_ENDLINE)
-    _log_to((uint8_t *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
+    if (need_to_use_format == true) {
+        _log_to((uint8_t *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
+    }
 #    endif
 
     if (is_truncated) {
@@ -145,6 +147,23 @@ void log_it(const log_mask_t level_mask, const char *format, ...) {
 #    endif  // LOG_THREADSAFE_ENABLED == 1U
 }
 
+/* -------------------------------------------------------------------------- */
+
+void log_it(const log_mask_t level_mask, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    _message(level_mask, format, args, true);
+    va_end(args);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void log_raw(const log_mask_t level_mask, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    _message(level_mask, format, args, false);
+    va_end(args);
+}
 /* -------------------------------------------------------------------------- */
 
 void log_array(const log_mask_t level_mask, const char *message, const void *data, size_t size) {

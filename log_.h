@@ -49,10 +49,10 @@ typedef enum log_mask_e {
     LOG_MASK_WARNING = 0x02,
     LOG_MASK_ERROR = 0x04,
     LOG_MASK_DEBUG = 0x08,
-    LOG_MASK_USER1 = 0x10,
-    LOG_MASK_USER2 = 0x20,
-    LOG_MASK_USER3 = 0x40,
-    LOG_MASK_USER4 = 0x80,
+    LOG_MASK_RAW = 0x10,
+    LOG_MASK_USER1 = 0x20,
+    LOG_MASK_USER2 = 0x40,
+    LOG_MASK_USER3 = 0x80,
     LOG_MASK_ALL = 0xFF,
 } log_mask_t;
 
@@ -72,12 +72,17 @@ typedef uint64_t log_timestamp_t;
 #if LOG_ENABLED == 1U
 #    define LOG(...)       log_it(__VA_ARGS__)
 #    define LOG_ARRAY(...) log_array(__VA_ARGS__)
+#    define LOG_RAW(...)   log_raw(LOG_MASK_RAW, __VA_ARGS__)
 #else /* LOG_ENABLED == 1 */
 #    define LOG(...)                                            \
         do {                                                    \
             /* emtpy macro to avoid static analyzer warnings */ \
         } while (0)
 #    define LOG_ARRAY(...)                                      \
+        do {                                                    \
+            /* emtpy macro to avoid static analyzer warnings */ \
+        } while (0)
+#    define LOG_RAW(...)                                        \
         do {                                                    \
             /* emtpy macro to avoid static analyzer warnings */ \
         } while (0)
@@ -138,6 +143,7 @@ log_result_t log_init(const log_mask_t level, log_io_t const *io);
 
 /* Do not use it in your code, better use defines like LOG_INFO or LOG_DEBUG_ARRAY */
 void log_it(const log_mask_t level, const char *format, ...) __PRINTF_FORMAT;
+void log_raw(const log_mask_t level, const char *format, ...) __PRINTF_FORMAT;
 void log_array(const log_mask_t level, const char *message, const void *array, size_t size);
 
 #    if LOG_ISR_QUEUE == 1U
