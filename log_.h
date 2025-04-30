@@ -78,15 +78,20 @@ typedef uint64_t log_timestamp_t;
 /* ===== LOG MACROS ========================================================= */
 
 #if LOG_ENABLED == 1U
-#    define LOG(...)       log_it(__VA_ARGS__)
-#    define LOG_ARRAY(...) log_array(__VA_ARGS__)
-#    define LOG_RAW(...)   log_raw(LOG_MASK_RAW, __VA_ARGS__)
+#    define LOG(...)         log_it(__VA_ARGS__)
+#    define LOG_ARRAY(...)   log_array(__VA_ARGS__)
+#    define LOG_ARRAY_F(...) log_array_float(__VA_ARGS__)
+#    define LOG_RAW(...)     log_raw(LOG_MASK_RAW, __VA_ARGS__)
 #else /* LOG_ENABLED == 1 */
 #    define LOG(...)                                            \
         do {                                                    \
             /* emtpy macro to avoid static analyzer warnings */ \
         } while (0)
 #    define LOG_ARRAY(...)                                      \
+        do {                                                    \
+            /* emtpy macro to avoid static analyzer warnings */ \
+        } while (0)
+#    define LOG_ARRAY_F(...)                                    \
         do {                                                    \
             /* emtpy macro to avoid static analyzer warnings */ \
         } while (0)
@@ -122,6 +127,11 @@ typedef uint64_t log_timestamp_t;
 #define LOG_DEBUG_ARRAY_GREEN(...) LOG_ARRAY(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_GREEN) LOG_FILE_TAG __VA_ARGS__)
 #define LOG_DEBUG_ARRAY_BLUE(...)  LOG_ARRAY(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_BLUE) LOG_FILE_TAG__VA_ARGS__)
 
+#define LOG_DEBUG_ARRAY_F(...)       LOG_ARRAY_F(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_WHITE) LOG_FILE_TAG __VA_ARGS__)
+#define LOG_DEBUG_ARRAY_RED_F(...)   LOG_ARRAY_F(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_RED) LOG_FILE_TAG __VA_ARGS__)
+#define LOG_DEBUG_ARRAY_GREEN_F(...) LOG_ARRAY_F(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_GREEN) LOG_FILE_TAG __VA_ARGS__)
+#define LOG_DEBUG_ARRAY_BLUE_F(...)  LOG_ARRAY_F(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_BLUE) LOG_FILE_TAG__VA_ARGS__)
+
 #if LOG_ENABLED == 1U
 typedef struct {
     void (*write)(const uint8_t *data, size_t size);
@@ -153,6 +163,7 @@ log_result_t log_init(const log_mask_t level, log_io_t const *io);
 void log_it(const log_mask_t level, const char *format, ...) __PRINTF_FORMAT;
 void log_raw(const log_mask_t level, const char *format, ...) __PRINTF_FORMAT;
 void log_array(const log_mask_t level, const char *message, const void *array, size_t size);
+void log_array_float(const log_mask_t level, const char *message, const float *array, size_t size);
 
 #    if LOG_ISR_QUEUE == 1U
 void log_flush_isr_queue(void);

@@ -21,32 +21,37 @@
 
 /* -------------------------------------------------------------------------- */
 
-static struct {
+typedef struct {
     char buff[LOG_MAX_MESSAGE_LENGTH];
     log_mask_t mask;
     log_io_t const *io;
 #    if LOG_ISR_QUEUE == 1U
-    uint8_t queue[LOG_MAX_MESSAGE_LENGTH * 2U];
+    uint8_t queue[LOG_ISR_MESSAGE_LENGTH];
     size_t queue_index;
 #    endif  // LOG_ISR_QUEUE == 1U
-} _ctx = {
-    .mask = LOG_MASK_OFF,
+} log_context_t;
+
+static log_context_t _ctx = {
+    .buff = { 0 },
+    .mask = LOG_MASK_ALL,
     .io = NULL,
 #    if LOG_ISR_QUEUE == 1U
+    .queue = { 0 },
     .queue_index = 0,
 #    endif  // LOG_ISR_QUEUE == 1U
 };
 
 /* -------------------------------------------------------------------------- */
 
-static const uint8_t snprintf_error[] = "\r\nsnprintf - internal error\r\n";
+static const uint8_t SNPRINTF_ERROR[] = "\r\nsnprintf - internal error\r\n";
 
 /* -------------------------------------------------------------------------- */
 
-static void _log_to(uint8_t const *data, size_t size);
+static inline void _log_to(uint8_t const *data, size_t size);
+static void _log_format(log_mask_t level_mask, const char *format, va_list args, bool add_formating);
+
 #    if LOG_TIMESTAMP_ENABLED == 1
 static inline void _print_uptime(void);
-
 #        if LOG_TIMESTAMP_FORMAT > 0U
 static inline void _print_date_time(void);
 #        endif  // LOG_TIMESTAMP_FORMAT > 0U
@@ -79,7 +84,7 @@ log_result_t log_init(const log_mask_t level_mask, log_io_t const *io) {
 #    endif  // LOG_THREADSAFE_ENABLED == 1U
 
 #    if LOG_ISR_QUEUE == 1U
-    if ((io->is_isr == NULL)) {
+    if (io->is_isr == NULL) {
         return LOGGER_RESULT_ERROR;
     }
 #    endif  // LOG_ISR_QUEUE == 1U
@@ -95,21 +100,20 @@ log_result_t log_init(const log_mask_t level_mask, log_io_t const *io) {
 
 /* -------------------------------------------------------------------------- */
 
-static void _message(const log_mask_t level_mask, const char *format, va_list args, bool need_to_use_format) {
+static void _log_format(log_mask_t level_mask, const char *format, va_list args, bool add_formating) {
 #    if (LOG_TIMESTAMP_ENABLED == 0) && !defined(LOG_ENDLINE)
-    (void)need_to_use_format;
+    (void)add_formating;
 #    endif  // LOG_TIMESTAMP_ENABLED == 0
     if ((level_mask & _ctx.mask) == 0) {
         return;
     }
 
 #    if LOG_THREADSAFE_ENABLED == 1U
-    /* to protect _ctx.buff */
     _ctx.io->lock();
 #    endif  // LOG_THREADSAFE_ENABLED == 1U
 
 #    if LOG_TIMESTAMP_ENABLED == 1
-    if (need_to_use_format == true) {
+    if (add_formating == true) {
 #        if LOG_TIMESTAMP_FORMAT > 0U
         _print_date_time();
 #        endif  // LOG_TIMESTAMP_FORMAT > 0
@@ -118,28 +122,25 @@ static void _message(const log_mask_t level_mask, const char *format, va_list ar
 #    endif  // LOG_TIMESTAMP_ENABLED == 1
 
     bool is_truncated = false;
-    int strlen = vsnprintf(_ctx.buff, LOG_MAX_MESSAGE_LENGTH, format, args);
-    if (strlen >= (int)LOG_MAX_MESSAGE_LENGTH) {
-        strlen = LOG_MAX_MESSAGE_LENGTH;
+    int len = vsnprintf(_ctx.buff, LOG_MAX_MESSAGE_LENGTH, format, args);
+    if (len >= (int)LOG_MAX_MESSAGE_LENGTH) {
+        len = LOG_MAX_MESSAGE_LENGTH;
         is_truncated = true;
     }
-
-    if (strlen >= 0) {
-        _log_to((uint8_t *)_ctx.buff, (size_t)strlen);
+    if (len >= 0) {
+        _log_to((uint8_t *)_ctx.buff, (size_t)len);
     } else {
-        _log_to(snprintf_error, sizeof(snprintf_error) - 1);
+        _log_to(SNPRINTF_ERROR, sizeof(SNPRINTF_ERROR) - 1);
     }
-
 #    if defined(LOG_ENDLINE)
-    if (need_to_use_format == true) {
-        _log_to((uint8_t *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
+    if (add_formating == true) {
+        _log_to((uint8_t const *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
     }
-#    endif
-
-    if (is_truncated) {
-        uint8_t const msg[] =
+#    endif  // LOG_ENDLINE
+    if (is_truncated == true) {
+        static const uint8_t TRUNC_MESSAGE[] =
             LOG_COLOR(LOG_COLOR_RED) "Message was truncated" LOG_ENDLINE "Increase LOG_MAX_MESSAGE_LENGTH" LOG_ENDLINE;
-        _log_to(msg, sizeof(msg) - 1);
+        _log_to(TRUNC_MESSAGE, sizeof(TRUNC_MESSAGE) - 1);
     }
 
 #    if LOG_THREADSAFE_ENABLED == 1U
@@ -149,10 +150,10 @@ static void _message(const log_mask_t level_mask, const char *format, va_list ar
 
 /* -------------------------------------------------------------------------- */
 
-void log_it(const log_mask_t level_mask, const char *format, ...) {
+void log_it(log_mask_t level_mask, const char *format, ...) {
     va_list args;
     va_start(args, format);
-    _message(level_mask, format, args, true);
+    _log_format(level_mask, format, args, true);
     va_end(args);
 }
 
@@ -161,18 +162,55 @@ void log_it(const log_mask_t level_mask, const char *format, ...) {
 void log_raw(const log_mask_t level_mask, const char *format, ...) {
     va_list args;
     va_start(args, format);
-    _message(level_mask, format, args, false);
+    _log_format(level_mask, format, args, false);
     va_end(args);
 }
+
 /* -------------------------------------------------------------------------- */
 
-void log_array(const log_mask_t level_mask, const char *message, const void *data, size_t size) {
-
+void log_array(log_mask_t level_mask, const char *message, const void *data, size_t size) {
     if ((level_mask & _ctx.mask) == 0) {
         return;
     }
+    uint8_t const *array = (uint8_t const *)data;
+#    if LOG_THREADSAFE_ENABLED == 1U
+    _ctx.io->lock();
+#    endif  // LOG_THREADSAFE_ENABLED == 1U
 
-    uint8_t const *array = (const uint8_t *)data;
+#    if LOG_TIMESTAMP_ENABLED == 1
+#        if LOG_TIMESTAMP_FORMAT > 0U
+    _print_date_time();
+#        endif  // LOG_TIMESTAMP_FORMAT > 0
+    _print_uptime();
+#    endif  // LOG_TIMESTAMP_ENABLED == 1
+    int len = snprintf(_ctx.buff, sizeof(_ctx.buff), "%s[%zu]:", message, size);
+    if (len >= 0) {
+        _log_to((uint8_t *)_ctx.buff, (size_t)len);
+    } else {
+        _log_to(SNPRINTF_ERROR, sizeof(SNPRINTF_ERROR) - 1);
+    }
+
+    for (size_t i = 0; i < size; i++) {
+        len = snprintf(_ctx.buff, sizeof(_ctx.buff), " %02X", array[i]);
+        if (len >= 0) {
+            _log_to((uint8_t *)_ctx.buff, (size_t)len);
+        } else {
+            _log_to(SNPRINTF_ERROR, sizeof(SNPRINTF_ERROR) - 1);
+        }
+    }
+    _log_to((uint8_t const *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
+
+#    if LOG_THREADSAFE_ENABLED == 1U
+    _ctx.io->unlock();
+#    endif  // LOG_THREADSAFE_ENABLED == 1U
+}
+
+/* -------------------------------------------------------------------------- */
+
+void log_array_float(log_mask_t level_mask, const char *message, const float *array, size_t size) {
+    if ((level_mask & _ctx.mask) == 0) {
+        return;
+    }
 
 #    if LOG_THREADSAFE_ENABLED == 1U
     _ctx.io->lock();
@@ -184,24 +222,22 @@ void log_array(const log_mask_t level_mask, const char *message, const void *dat
 #        endif  // LOG_TIMESTAMP_FORMAT > 0
     _print_uptime();
 #    endif  // LOG_TIMESTAMP_ENABLED == 1
-
-    int strlen = snprintf(_ctx.buff, sizeof(_ctx.buff), "%s[%u]:", message, size);
-    if (strlen >= 0) {
-        _log_to((uint8_t *)_ctx.buff, (size_t)strlen);
+    int len = snprintf(_ctx.buff, sizeof(_ctx.buff), "%s[%zu]:", message, size);
+    if (len >= 0) {
+        _log_to((uint8_t *)_ctx.buff, (size_t)len);
     } else {
-        _log_to(snprintf_error, sizeof(snprintf_error) - 1);
+        _log_to(SNPRINTF_ERROR, sizeof(SNPRINTF_ERROR) - 1);
     }
 
-    for (uint32_t i = 0; i < size; i++) {
-        strlen = snprintf(_ctx.buff, sizeof(_ctx.buff), " %02X", array[i]);
-        if (strlen >= 0) {
-            _log_to((uint8_t *)_ctx.buff, (size_t)strlen);
+    for (size_t i = 0; i < size; i++) {
+        len = snprintf(_ctx.buff, sizeof(_ctx.buff), " %.2f", array[i]);
+        if (len >= 0) {
+            _log_to((uint8_t *)_ctx.buff, (size_t)len);
         } else {
-            _log_to(snprintf_error, sizeof(snprintf_error) - 1);
+            _log_to(SNPRINTF_ERROR, sizeof(SNPRINTF_ERROR) - 1);
         }
     }
-
-    _log_to((uint8_t *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
+    _log_to((uint8_t const *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
 
 #    if LOG_THREADSAFE_ENABLED == 1U
     _ctx.io->unlock();
@@ -214,10 +250,10 @@ void log_array(const log_mask_t level_mask, const char *message, const void *dat
 
 void log_flush_isr_queue(void) {
     if (_ctx.queue_index > 0) {
-        _ctx.io->write((uint8_t *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
+        _ctx.io->write((uint8_t const *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
         _ctx.io->write(_ctx.queue, _ctx.queue_index);
         _ctx.queue_index = 0;
-        _ctx.io->write((uint8_t *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
+        _ctx.io->write((uint8_t const *)LOG_ENDLINE, sizeof(LOG_ENDLINE) - 1);
     }
 }
 
@@ -226,23 +262,17 @@ void log_flush_isr_queue(void) {
 /* -------------------------------------------------------------------------- */
 
 static inline void _log_to(uint8_t const *data, size_t size) {
-
 #    if LOG_ISR_QUEUE == 1U
-
     if (_ctx.io->is_isr()) {
-        size_t queue_count = _ctx.queue_index;
         for (size_t i = 0; i < size; i++) {
-            size_t index = queue_count + i;
-            if (index >= sizeof(_ctx.queue)) {
+            if (_ctx.queue_index >= sizeof(_ctx.queue)) {
                 return;
             }
-            _ctx.queue[index] = data[i];
+            _ctx.queue[_ctx.queue_index] = data[i];
             _ctx.queue_index++;
         }
-
         return;
     }
-
     log_flush_isr_queue();
 #    endif  // LOG_ISR_QUEUE == 1U
 
@@ -255,26 +285,21 @@ static inline void _log_to(uint8_t const *data, size_t size) {
 
 static inline void _print_uptime(void) {
 #        if LOG_TIMESTAMP_64BIT == 0
-#            define _FORMAT  "[%04" PRIi32 ".%03" PRIu32 "] "
-#            define _DIVIDER (1000U)
+#            define _FORMAT "[%04" PRIi32 ".%03" PRIu32 "] "
 #        else
-#            define _FORMAT  "[%04" PRIi64 ".%03" PRIu32 "] "
-#            define _DIVIDER (1000ULL)
+#            define _FORMAT "[%04" PRIi64 ".%03" PRIu32 "] "
 #        endif  // LOG_TIMESTAMP_64BIT == 1
 
-#        if LOG_TIMESTAMP_FORMAT > 0U
-    static const char TS_TEMPLATE[] = _FORMAT;
-#        else
-    static const char TS_TEMPLATE[] = _TIMESTAMP_COLOR _FORMAT;
-#        endif  // LOG_TIMESTAMP_FORMAT > 0U
-
+    static const log_timestamp_t _DIVIDER = 1000UL;
     log_timestamp_t ts = _ctx.io->get_uptime_ms();
 
-    int strlen = snprintf(_ctx.buff, sizeof(_ctx.buff), TS_TEMPLATE, (ts / _DIVIDER), (uint32_t)(ts % 1000UL));
-    if (strlen >= 0) {
-        _log_to((uint8_t *)_ctx.buff, (size_t)strlen);
+    log_timestamp_t sec = (ts / _DIVIDER);
+    uint32_t msec = (uint32_t)(ts % _DIVIDER);
+    int len = snprintf(_ctx.buff, sizeof(_ctx.buff), _TIMESTAMP_COLOR _FORMAT, sec, msec);
+    if (len >= 0) {
+        _log_to((uint8_t *)_ctx.buff, (size_t)len);
     } else {
-        _log_to(snprintf_error, sizeof(snprintf_error) - 1);
+        _log_to(SNPRINTF_ERROR, sizeof(SNPRINTF_ERROR) - 1);
     }
 }
 
@@ -291,28 +316,28 @@ static inline void _print_date_time(void) {
 #            endif
 
 #            if LOG_TIMESTAMP_FORMAT == 1U
-    int strlen = snprintf(_ctx.buff,
-                          sizeof(_ctx.buff),
-                          _TIMESTAMP_COLOR "[%02" PRIu32 ":%02" PRIu32 ":%02" PRIu32 "] ",
-                          (uint32_t)tm_buffer.tm_hour,
-                          (uint32_t)tm_buffer.tm_min,
-                          (uint32_t)tm_buffer.tm_sec);
+    int len = snprintf(_ctx.buff,
+                       sizeof(_ctx.buff),
+                       _TIMESTAMP_COLOR "[%02" PRIu32 ":%02" PRIu32 ":%02" PRIu32 "] ",
+                       (uint32_t)tm_buffer.tm_hour,
+                       (uint32_t)tm_buffer.tm_min,
+                       (uint32_t)tm_buffer.tm_sec);
 #            else
-    int strlen = snprintf(_ctx.buff,
-                          sizeof(_ctx.buff),
-                          _TIMESTAMP_COLOR "[%02" PRIu32 "-%02" PRIu32 "-%02" PRIu32 " %02" PRIu32 ":%02" PRIu32
-                                           ":%02" PRIu32 "] ",
-                          (uint32_t)(tm_buffer.tm_year + 1900),
-                          (uint32_t)(tm_buffer.tm_mon + 1),
-                          (uint32_t)tm_buffer.tm_mday,
-                          (uint32_t)tm_buffer.tm_hour,
-                          (uint32_t)tm_buffer.tm_min,
-                          (uint32_t)tm_buffer.tm_sec);
+    int len = snprintf(_ctx.buff,
+                       sizeof(_ctx.buff),
+                       _TIMESTAMP_COLOR "[%04" PRIu32 "-%02" PRIu32 "-%02" PRIu32 " %02" PRIu32 ":%02" PRIu32
+                                        ":%02" PRIu32 "] ",
+                       (uint32_t)(tm_buffer.tm_year + 1900),
+                       (uint32_t)(tm_buffer.tm_mon + 1),
+                       (uint32_t)tm_buffer.tm_mday,
+                       (uint32_t)tm_buffer.tm_hour,
+                       (uint32_t)tm_buffer.tm_min,
+                       (uint32_t)tm_buffer.tm_sec);
 #            endif  // LOG_TIMESTAMP_FORMAT == 1U
-    if (strlen >= 0) {
-        _log_to((uint8_t *)_ctx.buff, (size_t)strlen);
+    if (len >= 0) {
+        _log_to((uint8_t *)_ctx.buff, (size_t)len);
     } else {
-        _log_to(snprintf_error, sizeof(snprintf_error) - 1);
+        _log_to(SNPRINTF_ERROR, sizeof(SNPRINTF_ERROR) - 1);
     }
 }
 #        endif  // LOG_TIMESTAMP_FORMAT > 0U

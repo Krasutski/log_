@@ -40,6 +40,11 @@
 #define LOG_MAX_MESSAGE_LENGTH (128U)
 
 /*
+   Internal buffer size
+*/
+#define LOG_MAX_MESSAGE_LENGTH (128U)
+
+/*
    Use colors
 */
 #define LOG_ENABLED_COLOR (1U)
