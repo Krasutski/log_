@@ -19,7 +19,7 @@ extern "C" {
 
 #if !defined(LOG_TIMESTAMP_64BIT)
 #    define LOG_TIMESTAMP_64BIT (0U)
-#endif  // LOG_ENDLINE
+#endif  // LOG_TIMESTAMP_64BIT
 
 #if !defined(LOG_TIMESTAMP_ENABLED)
 #    define LOG_TIMESTAMP_ENABLED (1U)
@@ -85,19 +85,19 @@ typedef uint64_t log_timestamp_t;
 #else /* LOG_ENABLED == 1 */
 #    define LOG(...)                                            \
         do {                                                    \
-            /* emtpy macro to avoid static analyzer warnings */ \
+            /* empty macro to avoid static analyzer warnings */ \
         } while (0)
 #    define LOG_ARRAY(...)                                      \
         do {                                                    \
-            /* emtpy macro to avoid static analyzer warnings */ \
+            /* empty macro to avoid static analyzer warnings */ \
         } while (0)
 #    define LOG_ARRAY_F(...)                                    \
         do {                                                    \
-            /* emtpy macro to avoid static analyzer warnings */ \
+            /* empty macro to avoid static analyzer warnings */ \
         } while (0)
 #    define LOG_RAW(...)                                        \
         do {                                                    \
-            /* emtpy macro to avoid static analyzer warnings */ \
+            /* empty macro to avoid static analyzer warnings */ \
         } while (0)
 #endif /* LOG_ENABLED == 1 */
 
@@ -125,12 +125,12 @@ typedef uint64_t log_timestamp_t;
 #define LOG_DEBUG_ARRAY(...)       LOG_ARRAY(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_WHITE) LOG_FILE_TAG __VA_ARGS__)
 #define LOG_DEBUG_ARRAY_RED(...)   LOG_ARRAY(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_RED) LOG_FILE_TAG __VA_ARGS__)
 #define LOG_DEBUG_ARRAY_GREEN(...) LOG_ARRAY(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_GREEN) LOG_FILE_TAG __VA_ARGS__)
-#define LOG_DEBUG_ARRAY_BLUE(...)  LOG_ARRAY(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_BLUE) LOG_FILE_TAG__VA_ARGS__)
+#define LOG_DEBUG_ARRAY_BLUE(...)  LOG_ARRAY(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_BLUE) LOG_FILE_TAG __VA_ARGS__)
 
 #define LOG_DEBUG_ARRAY_F(...)       LOG_ARRAY_F(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_WHITE) LOG_FILE_TAG __VA_ARGS__)
 #define LOG_DEBUG_ARRAY_RED_F(...)   LOG_ARRAY_F(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_RED) LOG_FILE_TAG __VA_ARGS__)
 #define LOG_DEBUG_ARRAY_GREEN_F(...) LOG_ARRAY_F(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_GREEN) LOG_FILE_TAG __VA_ARGS__)
-#define LOG_DEBUG_ARRAY_BLUE_F(...)  LOG_ARRAY_F(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_BLUE) LOG_FILE_TAG__VA_ARGS__)
+#define LOG_DEBUG_ARRAY_BLUE_F(...)  LOG_ARRAY_F(LOG_MASK_DEBUG, LOG_COLOR(LOG_COLOR_BLUE) LOG_FILE_TAG __VA_ARGS__)
 
 #if LOG_ENABLED == 1U
 typedef struct {
